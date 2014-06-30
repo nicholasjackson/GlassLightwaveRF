@@ -18,7 +18,7 @@ public class SendUDP extends Thread {
 	private FileLogger m_logger; // Logging server object, runs in own thread.
 	private static final int LightwavePortIn = 9760; // Port into Lightwave Wifi hub.
 	private static final String BroadcastAddress = "255.255.255.255";  // Broadcast UDP address.
-	private static int MessageCount = 0;
+	private static int MessageCount = 1;
 	public static DatagramSocket transmitSocket; // Socket for UDP transmission to LWRF port 9760
 	public static Queue<String> m_buffer; // Simple queue to queue up UDP transmission that could be from a polling thread, or direct commands through API
 
@@ -85,8 +85,8 @@ public class SendUDP extends Thread {
 		 * Send the UDP commands from the buffer, waiting a period of time before sending next, so as not to flood UDP socket on LWRF 9760 port
 		 */
 		public void netsendUDP(String Command){
-			littlePause(2500);	// Wait a while so not to flood LighwaveRF box		   
-			Command = MessageCount + Command;
+            String Message = String.format("%3s",String.valueOf(MessageCount)).replaceAll(" ","0");
+            Command = Message + Command;
 			incrementMessageCount();
 
 			//System.out.println("Sending UDP Message: " + Command); // Command line output to see UDP command

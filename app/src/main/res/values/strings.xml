@@ -2,7 +2,8 @@
 <resources>
 
     <string name="app_name">GlassLightwave</string>
-    <string name="title_activity_main">Ligthwave</string>
+    <string name="title_activity_main">Lightwave</string>
     <string name="hello_world">Hello world!</string>
+    <string name="glass_voice_prompt">What would you like to do?</string>
 
 </resources>
