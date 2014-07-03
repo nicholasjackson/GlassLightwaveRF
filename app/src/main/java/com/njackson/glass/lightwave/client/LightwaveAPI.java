@@ -1,7 +1,7 @@
 //Java Version - Eddie Pratt - eddie_pratt AT hotmail.com
 package com.njackson.glass.lightwave.client;
 
-import java.io.Console;
+import java.io.IOException;
 
 /*
  * Basic API for controlling LightwaveRF Wifi box using UDP commands sent to port 9760 broadcast on 255.255.255.255
@@ -18,15 +18,17 @@ public class LightwaveAPI implements ILightwaveAPI {
 	public static final int ON = 1, on = 1, LOCK = 1, lock = 1; //Flags on
 	public static final int OFF = 0, off = 0, UNLOCK = 0, unlock = 0; //Flags off
 	public static final int MaxRooms = 8; // Max number of rooms
-	static ReceiveUDP server_in; // Server for receiving UDP from the wifi box
-	static SendUDP server_out; // Server for buffering and sending UDP from direct commands or polling from meter poller
-	static FileLogger logger; // Logging server
-	static Console console_input;//  Console server
+	static IReceiveUDP _server_in; // Server for receiving UDP from the wifi box
+    static ISendUDP _server_out; // Server for receiving UDP from the wifi box
+    final String _broadcastAddress = "255.255.255.255";
+    final int _sendPort = 9760;
+    final int _recievePort = 9761;
+    private int _messagenumber = 1;
 
-    public LightwaveAPI() {
-        logger = new FileLogger("LightwaveRF_Test.csv"); //Separate logging thread, log UDP traffic to CSV file
-        server_in = new ReceiveUDP(logger); //Separate UDP receiving server thread
-        server_out = new SendUDP(logger);
+    public LightwaveAPI(ISendUDP sendUDP, IReceiveUDP receiveUDP) {
+        //server_in = new ReceiveUDP(); //Separate UDP receiving server thread
+        _server_out = sendUDP;
+        _server_in = receiveUDP;
     }
 
 	/* Main Entry - Example Commands calling API
@@ -83,67 +85,67 @@ public class LightwaveAPI implements ILightwaveAPI {
 	 * Once done you just use other commands as documented. 
 	 */
 	
-	public void forceRegistration(){
-        String text = ",!R1Fa"; //693 hasn't any relevance - just arbitrary instead of 000
-        server_out.sendUDP(text);
+	public void forceRegistration() throws IOException {
+        String text = "!R1Fa"; //693 hasn't any relevance - just arbitrary instead of 000
+        sendUDP(text);
 	}
 	
 	// Send Raw UDP Command
-	public void sendRawUDP(String text){
+	public void sendRawUDP(String text) throws IOException {
         text = text + "\0";
-        server_out.sendUDP(text);
+        sendUDP(text);
 	}
 
 	// Switches off all devices in Room
-	public void sendRoomOff(int Room){
-        String text = ",!R" + Room + "Fa\0";
-        server_out.sendUDP(text);
+	public void sendRoomOff(int Room) throws IOException {
+        String text = "!R" + Room + "Fa\0";
+        sendUDP(text);
 	}
 
 	// Switches off all devices in all Rooms
-	public void sendAllRoomsOff(){
+	public void sendAllRoomsOff() throws IOException {
 		for (int i = 1; i<=MaxRooms; ++i){
 			sendRoomOff(i);
-			}
 		}
+	}
 	
 	// Sends Mood change request for Room 
-    public void sendRoomMood(int Room, int Mood)
-    {
-        String text = ",!R"+ Room + "FmP" + Mood + "|\0";
-        server_out.sendUDP(text);
+    public void sendRoomMood(int Room, int Mood) throws IOException {
+        String text = "!R"+ Room + "FmP" + Mood + "|\0";
+        sendUDP(text);
     }
 	
     // Send change request for Percent dim level to Device in Room
-    public void sendDeviceDim(int Room, int Device, int Percent)
-    { 
+    public void sendDeviceDim(int Room, int Device, int Percent) throws IOException {
         String pstr;
         pstr = "" + (int)(Math.floor(0.01* Percent * 32));
-        String text = ",!R" + Room + "D" + Device + "FdP" + pstr + "|\0";
-        server_out.sendUDP(text);
+        String text = "!R" + Room + "D" + Device + "FdP" + pstr + "|\0";
+        sendUDP(text);
     }
     
     // Send on/off State to Device in Room
-    public void sendDeviceOnOff(int Room, int Device, int State)
-    {
+    public void sendDeviceOnOff(int Room, int Device, int State) throws IOException {
         String statestr;
-        if(State==ON) statestr = "1"; 
-        		else statestr = "0";
-        String text = ",!R" + Room + "D" + Device + "F" + statestr + "|\0";
-        server_out.sendUDP(text);
+        if(State==ON)
+            statestr = "1";
+        else statestr = "0";
+        String text = "!R" + Room + "D" + Device + "F" + statestr + "|\0";
+        sendUDP(text);
     }
    
 	// Send Lock/Unlock to a switching Device in Room
-	public void sendDeviceLockUnlock(int Room, int Device, int State){
+	public void sendDeviceLockUnlock(int Room, int Device, int State) throws IOException {
         String statestr;
-        if(State==lock) statestr = "l"; //lock 
-        		else statestr = "u"; //unlock
-        String text = ",!R" + Room + "D" + Device + "F" + statestr + "|\0";
-        server_out.sendUDP(text);	
-		}
+        if(State==lock)
+            statestr = "l"; //lock
+        else
+            statestr = "u"; //unlock
+        String text = "!R" + Room + "D" + Device + "F" + statestr + "|\0";
+        sendUDP(text);
+	}
 		
 	// Send Open/Close/Stop to a relay Device in Room
-	public void sendOpenCloseStop(int Room, int Device, int State){
+	public void sendOpenCloseStop(int Room, int Device, int State) throws IOException {
         String statestr;
    
         switch (State) {
@@ -153,30 +155,28 @@ public class LightwaveAPI implements ILightwaveAPI {
 	        default		 :      statestr =  "^"; break;
 	    }
         
-        String text = ",!R" + Room + "D" + Device + "F" + statestr + "\0|";
-        server_out.sendUDP(text);	
-		}
-    
-    // Send on/off State to radiator TRV heating valve in Room
-    public void sendHeatOnOff(int Room, int State)
-    {
-    	 String statestr;
-         if(State==ON) statestr = "1"; 
-         		else statestr = "0";
-        String text = ",!R" + Room + "DhF" + statestr + "|\0";
-        server_out.sendUDP(text);
+        String text = "!R" + Room + "D" + Device + "F" + statestr + "\0|";
+        sendUDP(text);
     }
     
-	// Simple Pause where timedelay is in milliseconds
-	private void littlePause(int timedelay)
-	{
-		try 
-		{
-		Thread.sleep(timedelay); // do nothing for delay milliseconds 
-		} 
-		catch(InterruptedException e)
-		{
-		e.printStackTrace();
-		}
-	}
+    // Send on/off State to radiator TRV heating valve in Room
+    public void sendHeatOnOff(int Room, int State) throws IOException {
+    	String statestr;
+        if(State==ON)
+            statestr = "1";
+        else statestr = "0";
+        String text = "!R" + Room + "DhF" + statestr + "|\0";
+        sendUDP(text);
+    }
+
+    private void sendUDP(String message) throws IOException {
+        message = String.format("%s3,%s",_messagenumber,message);
+        try {
+            _server_out.open(_broadcastAddress, _sendPort);
+            _server_out.sendMessage(message);
+        } finally {
+            _server_out.close();
+        }
+    }
+
 }

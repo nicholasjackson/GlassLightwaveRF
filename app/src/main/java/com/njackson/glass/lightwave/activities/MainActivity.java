@@ -5,7 +5,10 @@ import com.google.android.glass.media.Sounds;
 import com.google.android.glass.widget.CardScrollAdapter;
 import com.google.android.glass.widget.CardScrollView;
 import com.njackson.glass.lightwave.R;
+import com.njackson.glass.lightwave.cards.TuggableView;
 import com.njackson.glass.lightwave.client.LightwaveAPI;
+import com.njackson.glass.lightwave.client.ReceiveUDP;
+import com.njackson.glass.lightwave.client.SendUDP;
 import com.njackson.glass.lightwave.parser.VoiceParser;
 import com.njackson.glass.lightwave.parser.VoiceParserException;
 
@@ -18,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 /**
@@ -93,7 +97,7 @@ public class MainActivity extends Activity {
                 .getStringArrayList(RecognizerIntent.EXTRA_RESULTS);
         try {
             VoiceParser parser = new VoiceParser(voiceResults.get(0));
-            LightwaveAPI api = new LightwaveAPI();
+            LightwaveAPI api = new LightwaveAPI(new SendUDP(),new ReceiveUDP());
 
             if (parser.get_action() == VoiceParser.Action.REGISTER_GLASS) {
                 api.forceRegistration();
@@ -103,7 +107,12 @@ public class MainActivity extends Activity {
                         parser.get_device().toInt(),
                         parser.get_action().toInt());
             }
+
+            //((TuggableView)mView).setMainText();
+
         } catch (VoiceParserException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -118,10 +127,7 @@ public class MainActivity extends Activity {
      * Builds a Glass styled "Hello World!" view using the {@link Card} class.
      */
     private View buildView() {
-        Card card = new Card(this);
-
-        card.setText(R.string.hello_world);
-        return card.getView();
+        return new TuggableView(this,R.layout.tuggable_view);
     }
 
 }
