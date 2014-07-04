@@ -69,6 +69,7 @@
         -->
 
         <TextView
+            android:text="ok glass"
             android:id="@+id/footer"
             android:layout_width="0dip"
             android:layout_height="wrap_content"

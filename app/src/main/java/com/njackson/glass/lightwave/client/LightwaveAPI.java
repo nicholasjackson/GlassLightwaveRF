@@ -2,6 +2,8 @@
 package com.njackson.glass.lightwave.client;
 
 import java.io.IOException;
+import java.util.Calendar;
+import java.util.Date;
 
 /*
  * Basic API for controlling LightwaveRF Wifi box using UDP commands sent to port 9760 broadcast on 255.255.255.255
@@ -10,8 +12,14 @@ import java.io.IOException;
  * Separate thread for receiving UDP responses from box, and buffering and sending UDP commands to box
  * Separate energy monitoring thread for periodically polling the box for electricity usage through wireless energy clamp
  */
-public class LightwaveAPI implements ILightwaveAPI {
-	
+public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
+
+    public enum Response{
+        OK,
+        ERROR,
+        TIMEOUT
+    }
+
 	public static final int STOP = 0, stop = 0; //Flags for relay stop
 	public static final int OPEN = 1, open = 1; //Flags for relay open
 	public static final int CLOSE = 2, close = 2; // Flags for relay close
@@ -85,67 +93,69 @@ public class LightwaveAPI implements ILightwaveAPI {
 	 * Once done you just use other commands as documented. 
 	 */
 	
-	public void forceRegistration() throws IOException {
+	public Response forceRegistration() throws IOException {
         String text = "!R1Fa"; //693 hasn't any relevance - just arbitrary instead of 000
-        sendUDP(text);
+        return sendUDP(text);
 	}
 	
 	// Send Raw UDP Command
-	public void sendRawUDP(String text) throws IOException {
+	public Response sendRawUDP(String text) throws IOException {
         text = text + "\0";
-        sendUDP(text);
+        return sendUDP(text);
 	}
 
 	// Switches off all devices in Room
-	public void sendRoomOff(int Room) throws IOException {
+	public Response sendRoomOff(int Room) throws IOException {
         String text = "!R" + Room + "Fa\0";
-        sendUDP(text);
+        return sendUDP(text);
 	}
 
 	// Switches off all devices in all Rooms
-	public void sendAllRoomsOff() throws IOException {
+	public Response sendAllRoomsOff() throws IOException {
+        Response resp = null;
 		for (int i = 1; i<=MaxRooms; ++i){
-			sendRoomOff(i);
+			resp = sendRoomOff(i);
 		}
+        return resp;
 	}
 	
 	// Sends Mood change request for Room 
-    public void sendRoomMood(int Room, int Mood) throws IOException {
+    public Response sendRoomMood(int Room, int Mood) throws IOException {
         String text = "!R"+ Room + "FmP" + Mood + "|\0";
-        sendUDP(text);
+        return sendUDP(text);
     }
 	
     // Send change request for Percent dim level to Device in Room
-    public void sendDeviceDim(int Room, int Device, int Percent) throws IOException {
+    public Response sendDeviceDim(int Room, int Device, int Percent) throws IOException {
         String pstr;
         pstr = "" + (int)(Math.floor(0.01* Percent * 32));
         String text = "!R" + Room + "D" + Device + "FdP" + pstr + "|\0";
-        sendUDP(text);
+        return sendUDP(text);
     }
     
     // Send on/off State to Device in Room
-    public void sendDeviceOnOff(int Room, int Device, int State) throws IOException {
+    public Response sendDeviceOnOff(int Room, int Device, int State) throws IOException {
         String statestr;
         if(State==ON)
             statestr = "1";
         else statestr = "0";
         String text = "!R" + Room + "D" + Device + "F" + statestr + "|\0";
-        sendUDP(text);
+        return sendUDP(text);
     }
    
 	// Send Lock/Unlock to a switching Device in Room
-	public void sendDeviceLockUnlock(int Room, int Device, int State) throws IOException {
+	public Response sendDeviceLockUnlock(int Room, int Device, int State) throws IOException {
         String statestr;
         if(State==lock)
             statestr = "l"; //lock
         else
             statestr = "u"; //unlock
         String text = "!R" + Room + "D" + Device + "F" + statestr + "|\0";
-        sendUDP(text);
+        return sendUDP(text);
 	}
 		
 	// Send Open/Close/Stop to a relay Device in Room
-	public void sendOpenCloseStop(int Room, int Device, int State) throws IOException {
+	public Response sendOpenCloseStop(int Room, int Device, int State) throws IOException {
         String statestr;
    
         switch (State) {
@@ -156,27 +166,65 @@ public class LightwaveAPI implements ILightwaveAPI {
 	    }
         
         String text = "!R" + Room + "D" + Device + "F" + statestr + "\0|";
-        sendUDP(text);
+        return sendUDP(text);
     }
     
     // Send on/off State to radiator TRV heating valve in Room
-    public void sendHeatOnOff(int Room, int State) throws IOException {
+    public Response sendHeatOnOff(int Room, int State) throws IOException {
     	String statestr;
         if(State==ON)
             statestr = "1";
         else statestr = "0";
         String text = "!R" + Room + "DhF" + statestr + "|\0";
-        sendUDP(text);
+        return sendUDP(text);
     }
 
-    private void sendUDP(String message) throws IOException {
+    private Response sendUDP(String message) throws IOException {
+        _server_in.open(_broadcastAddress,_recievePort,this);
+
         message = String.format("%s3,%s",_messagenumber,message);
-        try {
-            _server_out.open(_broadcastAddress, _sendPort);
-            _server_out.sendMessage(message);
-        } finally {
-            _server_out.close();
+        _server_out.open(_broadcastAddress, _sendPort);
+        _server_out.sendMessage(message);
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(new Date());
+        cal.add(Calendar.SECOND,10);
+        Date endDate = cal.getTime();
+
+        boolean timeout = false;
+        while(_message.isEmpty() && !timeout) {
+            try {
+                if(new Date().after(endDate)) {
+                    timeout = true;
+                    _message = "TIMEOUT";
+                }
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
+
+        _server_in.close();
+        Response response =  parseResponse(_message);
+        _message = "";
+        return response;
     }
 
+    private Response parseResponse(String message) {
+
+        if(message.contains("TIMEOUT")) {
+            return Response.TIMEOUT;
+        } else if(message.contains("OK")) {
+            return Response.OK;
+        } else {
+            return Response.ERROR;
+        }
+
+    }
+
+    private String _message = "";
+    @Override
+    public void onMessageReceived(String message) {
+        _message = message;
+    }
 }

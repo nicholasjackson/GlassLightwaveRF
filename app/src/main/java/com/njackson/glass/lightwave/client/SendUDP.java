@@ -52,14 +52,18 @@ public class SendUDP implements ISendUDP {
             InetAddress IPAddress = null;
             try {
                 IPAddress = InetAddress.getByName(_broadcastaddress);
+                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, _port); //Send broadcast UDP to 9760 port
+                _transmitSocket.send(sendPacket);
             } catch (UnknownHostException e) {
                 e.printStackTrace();
-            }
-            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, _port); //Send broadcast UDP to 9760 port
-            try {
-                _transmitSocket.send(sendPacket);
             } catch (IOException e) {
                 e.printStackTrace();
+            }finally {
+                try {
+                    close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

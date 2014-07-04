@@ -99,10 +99,11 @@ public class MainActivity extends Activity {
             VoiceParser parser = new VoiceParser(voiceResults.get(0));
             LightwaveAPI api = new LightwaveAPI(new SendUDP(),new ReceiveUDP());
 
+            LightwaveAPI.Response resp = null;
             if (parser.get_action() == VoiceParser.Action.REGISTER_GLASS) {
-                api.forceRegistration();
+                resp = api.forceRegistration();
             } else {
-                api.sendDeviceOnOff(
+                resp = api.sendDeviceOnOff(
                         parser.get_room().toInt(),
                         parser.get_device().toInt(),
                         parser.get_action().toInt());
@@ -115,6 +116,7 @@ public class MainActivity extends Activity {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
 
     @Override
