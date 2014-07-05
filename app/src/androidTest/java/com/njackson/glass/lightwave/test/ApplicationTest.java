@@ -1,4 +1,4 @@
-package lightwave.glass.njackson.com.glasslightwave;
+package com.njackson.glass.lightwave.test;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

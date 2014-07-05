@@ -28,4 +28,7 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
+    androidTestCompile 'junit:junit:3.8'
+    androidTestCompile 'com.google.dexmaker:dexmaker:1.1+'
+    androidTestCompile 'com.google.dexmaker:dexmaker-mockito:1.1+'
 }

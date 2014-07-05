@@ -14,12 +14,6 @@ import java.util.Date;
  */
 public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
 
-    public enum Response{
-        OK,
-        ERROR,
-        TIMEOUT
-    }
-
 	public static final int STOP = 0, stop = 0; //Flags for relay stop
 	public static final int OPEN = 1, open = 1; //Flags for relay open
 	public static final int CLOSE = 2, close = 2; // Flags for relay close
@@ -32,6 +26,12 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
     final int _sendPort = 9760;
     final int _recievePort = 9761;
     private int _messagenumber = 1;
+    private int _timeout = 10000;
+
+    @Override
+    public void setTimeout(int milliseconds) {
+        _timeout = milliseconds;
+    }
 
     public LightwaveAPI(ISendUDP sendUDP, IReceiveUDP receiveUDP) {
         //server_in = new ReceiveUDP(); //Separate UDP receiving server thread
@@ -92,27 +92,26 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
 	 * and it will ask you to approve the device connecting. You'll need to click a button on the box.
 	 * Once done you just use other commands as documented. 
 	 */
-	
-	public Response forceRegistration() throws IOException {
+    public ResponseParser.Response forceRegistration() throws IOException {
         String text = "!R1Fa"; //693 hasn't any relevance - just arbitrary instead of 000
         return sendUDP(text);
 	}
 	
 	// Send Raw UDP Command
-	public Response sendRawUDP(String text) throws IOException {
+	public ResponseParser.Response sendRawUDP(String text) throws IOException {
         text = text + "\0";
         return sendUDP(text);
 	}
 
 	// Switches off all devices in Room
-	public Response sendRoomOff(int Room) throws IOException {
+	public ResponseParser.Response sendRoomOff(int Room) throws IOException {
         String text = "!R" + Room + "Fa\0";
         return sendUDP(text);
 	}
 
 	// Switches off all devices in all Rooms
-	public Response sendAllRoomsOff() throws IOException {
-        Response resp = null;
+	public ResponseParser.Response sendAllRoomsOff() throws IOException {
+        ResponseParser.Response resp = null;
 		for (int i = 1; i<=MaxRooms; ++i){
 			resp = sendRoomOff(i);
 		}
@@ -120,13 +119,13 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
 	}
 	
 	// Sends Mood change request for Room 
-    public Response sendRoomMood(int Room, int Mood) throws IOException {
+    public ResponseParser.Response sendRoomMood(int Room, int Mood) throws IOException {
         String text = "!R"+ Room + "FmP" + Mood + "|\0";
         return sendUDP(text);
     }
 	
     // Send change request for Percent dim level to Device in Room
-    public Response sendDeviceDim(int Room, int Device, int Percent) throws IOException {
+    public ResponseParser.Response sendDeviceDim(int Room, int Device, int Percent) throws IOException {
         String pstr;
         pstr = "" + (int)(Math.floor(0.01* Percent * 32));
         String text = "!R" + Room + "D" + Device + "FdP" + pstr + "|\0";
@@ -134,7 +133,7 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
     }
     
     // Send on/off State to Device in Room
-    public Response sendDeviceOnOff(int Room, int Device, int State) throws IOException {
+    public ResponseParser.Response sendDeviceOnOff(int Room, int Device, int State) throws IOException {
         String statestr;
         if(State==ON)
             statestr = "1";
@@ -144,7 +143,7 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
     }
    
 	// Send Lock/Unlock to a switching Device in Room
-	public Response sendDeviceLockUnlock(int Room, int Device, int State) throws IOException {
+	public ResponseParser.Response sendDeviceLockUnlock(int Room, int Device, int State) throws IOException {
         String statestr;
         if(State==lock)
             statestr = "l"; //lock
@@ -155,7 +154,7 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
 	}
 		
 	// Send Open/Close/Stop to a relay Device in Room
-	public Response sendOpenCloseStop(int Room, int Device, int State) throws IOException {
+	public ResponseParser.Response sendOpenCloseStop(int Room, int Device, int State) throws IOException {
         String statestr;
    
         switch (State) {
@@ -170,7 +169,7 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
     }
     
     // Send on/off State to radiator TRV heating valve in Room
-    public Response sendHeatOnOff(int Room, int State) throws IOException {
+    public ResponseParser.Response sendHeatOnOff(int Room, int State) throws IOException {
     	String statestr;
         if(State==ON)
             statestr = "1";
@@ -179,7 +178,7 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
         return sendUDP(text);
     }
 
-    private Response sendUDP(String message) throws IOException {
+    private ResponseParser.Response sendUDP(String message) throws IOException {
         _server_in.open(_broadcastAddress,_recievePort,this);
 
         message = String.format("%s3,%s",_messagenumber,message);
@@ -188,7 +187,7 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
 
         Calendar cal = Calendar.getInstance();
         cal.setTime(new Date());
-        cal.add(Calendar.SECOND,10);
+        cal.add(Calendar.MILLISECOND,_timeout);
         Date endDate = cal.getTime();
 
         boolean timeout = false;
@@ -203,23 +202,12 @@ public class LightwaveAPI implements ILightwaveAPI, IMessageReceivedCallback {
                 e.printStackTrace();
             }
         }
-
+        _server_out.close();
         _server_in.close();
-        Response response =  parseResponse(_message);
+
+        ResponseParser.Response response =  ResponseParser.parseResponse(_message);
         _message = "";
         return response;
-    }
-
-    private Response parseResponse(String message) {
-
-        if(message.contains("TIMEOUT")) {
-            return Response.TIMEOUT;
-        } else if(message.contains("OK")) {
-            return Response.OK;
-        } else {
-            return Response.ERROR;
-        }
-
     }
 
     private String _message = "";

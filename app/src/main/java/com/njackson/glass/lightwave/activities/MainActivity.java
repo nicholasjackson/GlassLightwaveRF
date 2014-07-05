@@ -8,6 +8,7 @@ import com.njackson.glass.lightwave.R;
 import com.njackson.glass.lightwave.cards.TuggableView;
 import com.njackson.glass.lightwave.client.LightwaveAPI;
 import com.njackson.glass.lightwave.client.ReceiveUDP;
+import com.njackson.glass.lightwave.client.ResponseParser;
 import com.njackson.glass.lightwave.client.SendUDP;
 import com.njackson.glass.lightwave.parser.VoiceParser;
 import com.njackson.glass.lightwave.parser.VoiceParserException;
@@ -89,7 +90,6 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         getVoiceCommand();
-        mCardScroller.activate();
     }
 
     protected void getVoiceCommand() {
@@ -99,7 +99,7 @@ public class MainActivity extends Activity {
             VoiceParser parser = new VoiceParser(voiceResults.get(0));
             LightwaveAPI api = new LightwaveAPI(new SendUDP(),new ReceiveUDP());
 
-            LightwaveAPI.Response resp = null;
+            ResponseParser.Response resp = null;
             if (parser.get_action() == VoiceParser.Action.REGISTER_GLASS) {
                 resp = api.forceRegistration();
             } else {
@@ -116,6 +116,8 @@ public class MainActivity extends Activity {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        mCardScroller.activate();
 
     }
 

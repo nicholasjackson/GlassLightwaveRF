@@ -1,4 +1,4 @@
-package lightwave.glass.njackson.com.glasslightwave.parser;
+package com.njackson.glass.lightwave.test.parser;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
