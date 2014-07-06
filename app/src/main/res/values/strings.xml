@@ -6,5 +6,6 @@
     <string name="hello_world">Hello world!</string>
     <string name="glass_voice_prompt">What would you like to do?</string>
     <string name="ok_glass">\"ok glass\"</string>
+    <string name="config">{ \"rooms\": [ { \"id\": 1, \"name\": \"Kitchen\", \"lights\": [ { \"name\": \"Chandelier\", \"id\": 1 }, { \"name\": \"Wall Lights\", \"id\": 2 }, { \"name\": \"Spot Lights\", \"id\": 3 } ] },{ \"id\": 2, \"name\": \"Living Room\", \"lights\": [ { \"name\": \"Chandelier\", \"id\": 1 }, { \"name\": \"Hall\", \"id\": 2 } ] },{ \"id\": 3, \"name\": \"Bedroom\", \"lights\": [ { \"name\": \"Chandelier\", \"id\": 1 }, { \"name\": \"Bedside\", \"id\": 2 } ] } ] }</string>
 
 </resources>

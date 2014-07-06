@@ -1,5 +1,8 @@
 package com.njackson.glass.lightwave.parser;
 
+import com.njackson.glass.lightwave.entities.Config;
+import com.njackson.glass.lightwave.entities.Room;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -9,70 +12,58 @@ import java.util.regex.Pattern;
 public class VoiceParser {
 
     public enum Action {
-        ON(1),
-        OFF(0),
-        REGISTER_GLASS(2);
+        ON(1,"On"),
+        OFF(0,"Off"),
+        REGISTER_GLASS(2,"Register Glass");
 
-        private final int code;
-        private Action(int code) {
-            this.code = code;
+        private final int _code;
+        private final String _name;
+        private Action(int code,String name) {
+            this._code = code;
+            this._name = name;
         }
 
         public int toInt() {
-            return code;
+            return _code;
         }
+        public String toString() { return _name; }
 
-    }
-
-    public enum Room {
-        KITCHEN(1),
-        LIVING_ROOM(2),
-        BED_ROOM(3);
-
-        private final int code;
-        private Room(int code) {
-            this.code = code;
-        }
-
-        public int toInt() {
-            return code;
-        }
     }
 
     public enum Device {
-        LIGHTS(0);
+        LIGHTS(0,"Lights");
 
-        private final int code;
-        private Device(int code) {
-            this.code = code;
+        private final int _code;
+        private final String _name;
+        private Device(int code,String name) {
+            this._code = code;
+            this._name = name;
         }
 
         public int toInt() {
-            return code;
+            return _code;
         }
+        public String toString() {return _name;}
     }
 
     private String _command;
 
     private Action _action;
     public Action get_action() { return _action; }
-    public void set_action(Action action) { this._action = action; }
 
     private Room _room;
     public Room get_room() { return _room; }
-    public void set_room(Room room) { this._room = room; }
 
     private Device _device;
     public Device get_device() { return _device; }
-    public void set_device(Device device) { this._device = device; }
 
-    public VoiceParser(String command) throws VoiceParserException {
+    public VoiceParser(String command,Config config) throws VoiceParserException {
         _command = command;
 
         getAction(_command);
 
         if(_action != Action.REGISTER_GLASS) {
-            getRoom(_command);
+            getRoom(_command,config);
             getDevice(_command);
         }
     }
@@ -95,18 +86,10 @@ public class VoiceParser {
         }
     }
 
-    private void getRoom(String command) throws VoiceParserException {
-        Pattern pattern = Pattern.compile("(\\bkitchen|\\bliving room|\\bbed room)");
-        Matcher matcher = pattern.matcher(command);
-
-        // check all occurance
-        while (matcher.find()) {
-            if(matcher.group().equalsIgnoreCase("kitchen")) {
-                _room = Room.KITCHEN;
-            }else if(matcher.group().equalsIgnoreCase("living room")) {
-                _room = Room.LIVING_ROOM;
-            } else if(matcher.group().equalsIgnoreCase("bed room")) {
-                _room = Room.BED_ROOM;
+    private void getRoom(String command,Config config) throws VoiceParserException {
+        for(int n=0;n < config.rooms.size();n++) {
+            if(command.toLowerCase().contains(config.rooms.get(n).name.toLowerCase())) {
+                _room = config.rooms.get(n);
             }
         }
 
